@@ -1,0 +1,6 @@
+name = NyTech API
+description = Nyberg Technology API Module.
+core = 7.x
+package = NyTech
+
+files[] = nytech_api.module
