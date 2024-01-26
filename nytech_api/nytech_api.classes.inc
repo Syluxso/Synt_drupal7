@@ -11,28 +11,28 @@ module_load_include('inc', basename(__DIR__), basename(__DIR__) . '.callbacks');
  * - user agent
  * - Path arguments /api/v1/%/%/% etc.
  */
-class ReqMeta {
+class RequestMeta {
   public $get;
   public $post;
   public $agent;
-  public $args;
   public $session;
   public $basic;
-  
+  public $method;
+
   function __construct($args = false) {
     $this->headers();
     $this->get();
     $this->post();
     $this->agent();
-    $this->args($args);
+    $this->method();
   }
-  
+
   function add_data($key, $value) {
     $array = $this->args;
     $array[$key] = $value;
     $this->args = $array;
   }
-  
+
   function headers() {
     /*
      * Currently we are only looking for basic auth and session/sid auth data.
@@ -55,7 +55,7 @@ class ReqMeta {
       unset($this->basic);
     }
   }
-  
+
   function get() {
     $get = $_GET;
     unset($get['q']);
@@ -63,24 +63,22 @@ class ReqMeta {
       $this->get = $get;
     }
   }
-  
+
   function post() {
     $post = $_POST;
     if(!empty($post)) {
       $this->post = $post;
     }
   }
-  
+
   function agent() {
     if(!empty($_SERVER['HTTP_USER_AGENT'])) {
       $this->agent = $_SERVER['HTTP_USER_AGENT'];
     }
   }
-  
-  function args($args = false) {
-    if(!empty($args)) {
-      $this->args = $args;
-    }
+
+  function method() {
+    $this->method = $_SERVER['REQUEST_METHOD'];
   }
 }
 
@@ -95,7 +93,7 @@ class Auth {
   public $user_id    = false;
   public $user       = false;
   public $authorized = false;
-  
+
   function __construct($data) {
     if(!empty($data->session)) {
       $this->set_session($data);
@@ -103,7 +101,7 @@ class Auth {
       $this->set_basic($data);
     }
   }
-  
+
   private function set_session($data) {
     if(!empty($data->session)) {
       $this->type = 'session';
@@ -117,7 +115,7 @@ class Auth {
       unset($this->basic);
     }
   }
-  
+
   private function set_basic($data) {
     if(!empty($data->basic)) {
       $this->type = 'basic';
@@ -126,15 +124,15 @@ class Auth {
       $this->set_user($basic->user);
     }
   }
-  
+
   private function set_user($user) {
     if($user != false) {
       $this->user = $user;
-      $this->user_id = (int) $this->user;
+      $this->user_id = (int) $this->user->uid;
       $this->authorized = true;
     }
   }
-  
+
   public function non_auth() {
     $this->type = 'non_auth';
     $this->authorized = true;
@@ -159,32 +157,35 @@ class Synt {
   public $message = 'Ok.';
   public $data = false;
   public $errors;
-  
-  function __construct($xClass) {
-    $this->data($xClass);
-    $this->status($xClass);
-    $this->errors($xClass);
+
+  private $xClass;
+
+  function __construct($callbac) {
+    $this->xClass = $callbac;
+    $this->data($callbac);
+    $this->status($callbac);
+    $this->errors($callbac);
     $this->finish();
   }
-  
-  function status($xClass) {
-    if(!empty($xClass->code) && !empty($xClass->message)) {
-      $this->code = (int) $xClass->code;
-      $this->message = $xClass->message;
+
+  function status($callbac) {
+    if(!empty($callbac->code) && !empty($callbac->message)) {
+      $this->code = (int) $callbac->code;
+      $this->message = $callbac->message;
     }
   }
-  
-  function data($xClass) {
-    if(!empty($xClass->data)) {
-      $this->data = $xClass->data;
+
+  function data($callbac) {
+    if(!empty($callbac->data)) {
+      $this->data = $callbac->data;
     }
   }
-  
-  function errors($xClass) {
-    if(!empty($xClass->errors)) {
-      $this->errors = $xClass->errors;
+
+  function errors($callbac) {
+    if(!empty($callbac->errors)) {
+      $this->errors = $callbac->errors;
       // Update status;
-      foreach($xClass->errors as $error) {
+      foreach($callbac->errors as $error) {
         $this->code = $error->code;
         $this->message = $error->message;
       }
@@ -192,11 +193,15 @@ class Synt {
       unset($this->errors);
     }
   }
-  
+
   function finish() {
     drupal_add_http_header('Status', $this->code . ' ' . $this->message);
   }
-  
+
+  public function debug() {
+    $this->debug = $this->xClass;
+  }
+
 }
 
 
@@ -204,16 +209,16 @@ class Synt {
  * AUTHORIZATION
  */
 class BasicAuth {
-  
+
   public $access = false;
   public $user_id = false;
   public $user = false;
   public $sid = false;
-  
+
   function __construct($user_name, $pass) { // On registration $user->name is synced to $user->mail.
     $id = user_authenticate($user_name, $pass);
     $this->set_user_id($id);
-    
+
     if ($this->user_id > 0) {
       $account = array('uid' => $this->user_id);
       user_login_submit(array(), $account);
@@ -227,15 +232,15 @@ class BasicAuth {
       $this->user = false;
     }
   }
-  
+
   private function set_user_id($id) {
     $this->user_id = (int) $id;
   }
-  
+
   private function set_sid($sid) {
     $this->sid = $sid;
   }
-  
+
   private function set_access($new_access) {
     $this->access = $new_access;
   }
@@ -248,7 +253,7 @@ class SessionAuth {
   public $access = false;
   public $user_id = 0;
   public $sid = null;
-  
+
   function __construct($sid) {
     if(!empty($sid)) {
       $query = 'SELECT s.uid FROM {sessions} s WHERE s.sid = :sid';
@@ -263,15 +268,15 @@ class SessionAuth {
       }
     }
   }
-  
+
   private function set_user_id($id) {
     $this->user_id = (int) $id;
   }
-  
+
   private function set_sid($sid) {
     $this->sid = $sid;
   }
-  
+
   private function set_access($new_access) {
     $this->access = $new_access;
   }
@@ -281,7 +286,7 @@ class AnonAuth {
   public $access = true;
   public $user_id = 0;
   public $sid = null;
-  
+
   function __construct($auth) {
     if(!empty($auth->user_id) ) {
       $this->user_id = $auth->user_id;

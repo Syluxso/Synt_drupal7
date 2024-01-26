@@ -17,6 +17,13 @@ function nytech_api_menu() {
   $item->json_output();
   $items = $item->item($items);
 
+  $item = new NyTechMenu(__DIR__);
+  $item->path('api/v1/account');
+  $item->page_callback('api_account');
+  $item->access_callback(true);
+  $item->json_output();
+  $items = $item->item($items);
+
   return $items;
 }
 
