@@ -24,7 +24,29 @@ function nytech_api_menu() {
   $item->json_output();
   $items = $item->item($items);
 
+  $item = new NyTechMenu(__DIR__);
+  $item->path('api/v1/notifications');
+  $item->page_callback('api_notifications');
+  $item->access_callback(true);
+  $item->json_output();
+  $items = $item->item($items);
+
+  $item = new NyTechMenu(__DIR__);
+  $item->path('api/v1/o/%/jobs');
+  $item->page_callback('api_jobs');
+  $item->page_arguments([3]);
+  $item->access_callback(true);
+  $item->json_output();
+  $items = $item->item($items);
+
+  $item = new NyTechMenu(__DIR__);
+  $item->path('api/v1/o/%/jobs/%/images/%/view');
+  $item->page_callback('api_jobs_image_view');
+  $item->page_arguments([3,5,7]);
+  $item->access_callback(true);
+  $item->json_output();
+  $items = $item->item($items);
+
   return $items;
 }
-
 

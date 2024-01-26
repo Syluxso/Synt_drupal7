@@ -27,7 +27,7 @@ class Callback {
     $this->auth();
   }
 
-  private function variables($array) {
+  function variables($array) {
     if(is_array($array)) {
       foreach($array as $key => $value) {
         $this->add_property($key, $value);
@@ -54,11 +54,16 @@ class Callback {
   }
 
   function check_methods() {
+    $access = false;
     drupal_add_http_header('Access-Control-Allow-Methods', $this->methods);
     $array = explode(',', $this->methods);
-    if(!in_array($this->request->method, $array)) {
+    if(in_array($this->request->method, $array)) {
+      $access = true;
+    }
+    if($access == false) {
       $this->add_error(405, 'Method Not Allowed');
     }
+    return $access;
   }
 
   function add_property($key, $data) {
@@ -114,3 +119,52 @@ class NyTechAPIAccount extends Callback {
   }
 }
 
+class NyTechAPINotifications extends Callback {
+  function __construct() {
+    parent::__construct();
+    $method_ok = $this->check_methods();
+    if($method_ok) {
+      $notifications = new NyTechUserNotifications($this->auth->user);
+      $notifications->query();
+      $objects = [];
+      foreach($notifications->objects as $entity) {
+        $objects[] = new NyTechNotification($entity);
+      }
+      $this->data($objects);
+    }
+  }
+}
+
+class NyTechAPIJobs extends Callback {
+  function __construct($array = false) {
+    $this->variables($array);
+    parent::__construct();
+    $method_ok = $this->check_methods();
+    if($method_ok) {
+      $jobs = new NyTechOrgJobs($this->org_id);
+      $jobs->query();
+      $objects = [];
+      foreach($jobs->objects as $entity) {
+        $objects[] = new NyTechJob($entity);
+      }
+      $this->data($objects);
+    }
+  }
+}
+
+class NyTechAPIImage extends Callback {
+  function __construct($array = false) {
+    $this->variables($array);
+    parent::__construct();
+    $method_ok = $this->check_methods();
+    if($method_ok) {
+      if($this->request->method == 'POST') {
+        // new NyTechAPIImageUpdate($this->request);
+        $this->status(201, 'Image updated.');
+      }
+      $entity = entity_load_single('image', $this->image_id);
+      $eClass = new NyTechImage($entity);
+      $this->data($eClass);
+    }
+  }
+}
