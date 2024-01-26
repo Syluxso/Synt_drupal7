@@ -1,30 +1,16 @@
 <?php
+module_load_include('inc', basename(__DIR__), basename(__DIR__) . '.classes');
+module_load_include('inc', basename(__DIR__), basename(__DIR__) . '.callbacks');
 
+/*
+ * This is an example of how to use the nytech_api endpoint system.
+ */
 function api_test($value) {
-  $meta = new ReqMeta;
-  $auth = new Auth($meta);
-  $callback = new NyTechTestBootstrap($auth);
+  $meta = new ReqMeta; // Gets session, basic auth, post, get, and custom values into a class.
+  $meta->add_data('custom_key', $value); // The $value is the 'page argument' pass to the 'page callback' function.
+  $auth = new Auth($meta); // Authorize the user and load the user data.
+  $callback = new NyTechTestBootstrap($auth); //
   $synt = new Synt($callback);
   return $synt;
 }
 
-
-
-class NyTechTestBootstrap extends Callback {
-
-  public $test;
-  public $auth;
-  public $meta;
-
-  function __construct($auth) {
-    $this->auth($auth);
-    $this->permit_methods('GET');
-    $this->status(201, 'Content created yo');
-    $this->data([
-      'ping' => 234,
-      'ping1' => 234,
-      'ping2' => 234,
-      'ping3' => 234,
-    ]);
-  }
-}

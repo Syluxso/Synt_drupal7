@@ -3,4 +3,8 @@ description = Nyberg Technology API Module.
 core = 7.x
 package = NyTech
 
+dependencies[] = nytech_master
+
 files[] = nytech_api.module
+
+
