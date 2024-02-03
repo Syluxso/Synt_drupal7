@@ -11,7 +11,7 @@ function nytech_api_menu() {
 
   $item = new NyTechMenu(__DIR__);
   $item->path('api/v1/test/%');
-  $item->page_callback('api_test');
+  $item->page_callback('endpoint_test');
   $item->page_arguments([3]);
   $item->access_callback(true);
   $item->json_output();
@@ -19,30 +19,36 @@ function nytech_api_menu() {
 
   $item = new NyTechMenu(__DIR__);
   $item->path('api/v1/account');
-  $item->page_callback('api_account');
+  $item->page_callback('endpoint_account');
   $item->access_callback(true);
   $item->json_output();
   $items = $item->item($items);
 
   $item = new NyTechMenu(__DIR__);
   $item->path('api/v1/notifications');
-  $item->page_callback('api_notifications');
+  $item->page_callback('endpoint_notifications');
   $item->access_callback(true);
   $item->json_output();
   $items = $item->item($items);
 
   $item = new NyTechMenu(__DIR__);
-  $item->path('api/v1/o/%/jobs');
-  $item->page_callback('api_jobs');
-  $item->page_arguments([3]);
+  $item->path('api/v1/deals');
+  $item->page_callback('endpoint_deals');
   $item->access_callback(true);
   $item->json_output();
   $items = $item->item($items);
 
   $item = new NyTechMenu(__DIR__);
-  $item->path('api/v1/o/%/jobs/%/images/%/view');
-  $item->page_callback('api_jobs_image_view');
+  $item->path('api/v1/register');
+  $item->page_callback('endpoint_register');
   $item->page_arguments([3,5,7]);
+  $item->access_callback(true);
+  $item->json_output();
+  $items = $item->item($items);
+
+  $item = new NyTechMenu(__DIR__);
+  $item->path('api/v1/login');
+  $item->page_callback('endpoint_login');
   $item->access_callback(true);
   $item->json_output();
   $items = $item->item($items);

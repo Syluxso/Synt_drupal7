@@ -95,7 +95,9 @@ class Auth {
   public $authorized = false;
 
   function __construct($data) {
-    if(!empty($data->session)) {
+    if($data->non_auth = true) {
+      $this->non_auth();
+    } elseif(!empty($data->session)) {
       $this->set_session($data);
     } elseif(!empty($data->basic)) {
       $this->set_basic($data);
@@ -297,12 +299,190 @@ class AnonAuth {
   }
 }
 
-class NyTechError {
+class NyTechError extends NyTechStatus {
   public $code;
   public $message;
   public function __construct($code, $message) {
     $this->code = $code;
     $this->message = $message;
-    watchdog('error', print_r($this, true));
   }
+}
+
+class NyTechStatus {
+  public $code;
+  public $message;
+  public function __construct($code, $message) {
+    $this->code = $code;
+    $this->message = $message;
+  }
+
+  public function status() {
+    return [
+      'type' => 'status',
+      'data' => $this,
+    ];
+  }
+
+  public function error() {
+    return [
+      'type' => 'error',
+      'data' => $this,
+    ];
+  }
+}
+
+/*
+ * All other classes in this file are to extend this class.
+ */
+class Callback {
+  public $code = 200;
+  public $message = 'OK';
+  public $data;
+  public $errors;
+
+  public $authorized = false;
+  public $account = false;
+
+  public $request;
+  public $auth;
+  public $non_auth = false;
+
+  public $methods = 'GET';
+
+  function __construct($array = false) {
+    drupal_add_http_header('Access-Control-Allow-Origin', "*");
+    $this->variables($array);
+    $this->request();
+    $this->auth();
+  }
+
+  function variables($array) {
+    if(is_array($array)) {
+      foreach($array as $key => $value) {
+        $this->add_property($key, $value);
+      }
+    }
+  }
+
+  function request() {
+    $this->request = new RequestMeta();
+  }
+
+  function auth() {
+    $non_auth = $this->non_auth;
+    switch ($non_auth) {
+      case 'non_auth':
+        $non_auth = new stdClass();
+        $non_auth->non_auth = true;
+        $auth = new Auth($non_auth);
+        $this->authorized = true;
+        break;
+      default:
+        $auth = new Auth($this->request);
+        $this->authorized = false;
+        if($auth->authorized != true) {
+          $this->add_error(403, 'Unauthorized');
+        } elseif($auth->authorized == true) {
+          $this->authorized = true;
+        }
+        if($this->authorized == true && !empty($auth->user)) {
+          $this->account = new NyTechAccount($auth->user);
+        }
+        break;
+    }
+    $this->auth = $auth;
+  }
+
+  function check_methods() {
+    $access = false;
+    drupal_add_http_header('Access-Control-Allow-Methods', $this->methods);
+    $array = explode(',', $this->methods);
+    if(in_array($this->request->method, $array)) {
+      $access = true;
+    }
+    if($access == false) {
+      $this->add_error(405, 'Method Not Allowed');
+    }
+    return $access;
+  }
+
+  function add_property($key, $data) {
+    $this->$key = $data;
+  }
+
+  function data($data) {
+    if($this->authorized != false) {
+      $this->data = $data;
+    }
+  }
+
+  function status($code, $message) {
+    $this->code = (int) $code;
+    $this->message = $message;
+  }
+
+  function add_error($code, $ping) {
+    $errors = [];
+    if(!empty($this->errors)) {
+      $errors = $this->errors;
+    }
+    $errors[] = new NyTechError($code, $ping);
+    $this->errors = $errors;
+  }
+
+  function account_load($user_id) {
+    $this->account = new NyTechAccount(user_load($user_id));
+  }
+}
+
+class eClass {
+  public $entity_id;
+  public $entity_type;
+
+  public $bundle;
+  public $user_id;
+  public $status;
+  public $created;
+  public $created_pretty;
+  public $changed;
+  public $changed_pretty;
+  public $uuid;
+
+  public $urls;
+
+  function __construct($entity, $entity_type, $bundle) {
+    $this->set_entity($entity, $entity_type, $bundle);
+    $this->set_user($entity);
+    $this->set_status($entity);
+    $this->set_created($entity);
+    $this->set_uuid($entity);
+  }
+
+  public function set_entity($entity, $entity_type, $bundle) {
+    $this->entity_id = $entity->id;
+    $this->entity_type = $entity_type;
+    $this->bundle = $bundle;
+  }
+
+  public function set_user($entity) {
+    $this->user_id = $entity->uid;
+  }
+
+  public function set_status($entity) {
+    if(property_exists($entity, 'status')) {
+      $this->status = $entity->status;
+    }
+  }
+
+  public function set_created($entity) {
+    $this->created = (int) $entity->created;
+    $this->created_pretty = date('M d, Y g:ia', $this->created);
+    $this->changed = (int) $entity->changed;
+    $this->changed_pretty = date('M d, Y g:ia', $this->changed);
+  }
+
+  public function set_uuid($entity) {
+    $this->uuid = $entity->uuid;
+  }
+
 }
